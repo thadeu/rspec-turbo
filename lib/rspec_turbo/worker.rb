@@ -40,6 +40,10 @@ module RSpecTurbo
 
     def self.env(slot, progress_file)
       {
+        # Force the test env so each worker connects to the *_test database
+        # DbSetup created, regardless of how the run was launched (a Rake/Rails
+        # task boots in development) or whether rails_helper sets it.
+        "RAILS_ENV" => "test",
         "TEST_ENV_NUMBER" => slot.to_s,
         "RSPEC_TURBO_PROGRESS_FILE" => progress_file,
         "COVERAGE" => ENV.fetch("COVERAGE", "0")

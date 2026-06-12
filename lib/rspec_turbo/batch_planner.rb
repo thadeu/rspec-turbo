@@ -59,7 +59,7 @@ module RSpecTurbo
       File.open(Config.dry_run_log, "w") do |err_file|
         IO.popen(
           # COVERAGE=0 keeps SimpleCov from contaminating the JSON on stdout.
-          [{"COVERAGE" => "0", "TEST_ENV_NUMBER" => "1"},
+          [{"RAILS_ENV" => "test", "COVERAGE" => "0", "TEST_ENV_NUMBER" => "1"},
             "bundle", "exec", "rspec", "--dry-run", "--format", "json",
             *@rspec_options, *@files.map { |f| "spec/#{f}" }],
           err: err_file, &:read

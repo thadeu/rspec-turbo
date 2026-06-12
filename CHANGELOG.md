@@ -20,6 +20,12 @@ Initial extraction from the single-file `turbo.rb` runner into a gem.
   with `SimpleCov.collate`, emitting JSON on CI (`JSONFormatter`) and HTML
   locally (`HTMLFormatter`); glob overridable via `RSPEC_TURBO_COVERAGE_GLOB`.
 
+### Fixed
+- Workers and the dry-run now force `RAILS_ENV=test`, so they always target the
+  `*_test` databases `DbSetup` created — instead of relying on the project's
+  `rails_helper` to set it (which broke when launched via `rake`/`rails`, where
+  the parent process boots in development).
+
 ### Fixed (versus the original script)
 - `DbSetup#show_log` referenced an undefined `w` variable on failure.
 - Missing `require "set"` for `FileDiscovery`.

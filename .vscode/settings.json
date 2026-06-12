@@ -1,0 +1,12 @@
+{
+  "rubyLsp.formatter": "standard",
+  "rubyLsp.linters": ["standard"],
+  "[ruby]": {
+    "editor.defaultFormatter": "Shopify.ruby-lsp",
+    "editor.formatOnSave": true,
+    "editor.tabSize": 2,
+    "editor.insertSpaces": true,
+    "files.trimTrailingWhitespace": true,
+    "files.insertFinalNewline": true
+  }
+}

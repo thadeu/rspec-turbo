@@ -1,0 +1,20 @@
+# Standard Ruby is the source of truth for style in this project.
+# This file only exists so RuboCop-based tooling (editors, CI steps that call
+# `rubocop`) applies Standard's ruleset instead of stock RuboCop. The canonical
+# runner is still `bundle exec standardrb`.
+require:
+  - standard
+  - standard-custom
+  - standard-performance
+
+inherit_gem:
+  standard: config/base.yml
+  standard-custom: config/base.yml
+  standard-performance: config/base.yml
+
+AllCops:
+  SuggestExtensions: false
+  Exclude:
+    - "tmp/**/*"
+    - "vendor/**/*"
+    - "trash/**/*"

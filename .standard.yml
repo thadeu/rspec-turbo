@@ -1,0 +1,5 @@
+# Standard Ruby configuration. ruby_version is inferred from the gemspec.
+ignore:
+  - "trash/**/*"
+  - "tmp/**/*"
+  - "vendor/**/*"

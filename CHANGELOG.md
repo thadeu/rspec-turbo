@@ -16,6 +16,9 @@ Initial extraction from the single-file `turbo.rb` runner into a gem.
 - Three entry points: the `rspec-turbo` binary plus a `spec:turbo` Rake task
   (reachable as both `rake spec:turbo` and `rails spec:turbo`), registered in
   Rails apps through a Railtie.
+- `coverage:merge` Rake task that collates per-worker SimpleCov result files
+  with `SimpleCov.collate`, emitting JSON on CI (`JSONFormatter`) and HTML
+  locally (`HTMLFormatter`); glob overridable via `RSPEC_TURBO_COVERAGE_GLOB`.
 
 ### Fixed (versus the original script)
 - `DbSetup#show_log` referenced an undefined `w` variable on failure.

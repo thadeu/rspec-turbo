@@ -162,9 +162,8 @@ parse argv → DbSetup → FileDiscovery → BatchPlanner → Executor (pool) �
   the databases already exist; set `RSPEC_TURBO_FORCE_SETUP=0`, the default, and
   the setup is skipped on a cache hit.)
 - **`rspec_junit_formatter`** — only when `JUNIT_DIR` is set.
-- **A `coverage:merge` rake task** — only when `COVERAGE=1`. rspec-turbo runs
-  each worker with its own `TEST_ENV_NUMBER`, then calls
-  `rake coverage:merge` to combine the per-worker SimpleCov results.
+- **`simplecov` + `simplecov_json_formatter`** — only when `COVERAGE=1`
+  (see [Coverage](#coverage-optional) below).
 
 ## Environment variables
 
@@ -198,6 +197,46 @@ RSPEC_TURBO_NO_PROFILE=1 bundle exec rspec-turbo
 | `RSPEC_PROFILE_THRESHOLD_TIME` | `0.2` | Seconds an example must exceed to make the "slow examples" list |
 | `RSPEC_PROFILE_THRESHOLD_QUERIES` | `30` | Query count an example must exceed to make that list |
 | `RSPEC_PROFILE_GROUP_BY` | — | `1`/`auto`, a base path, or a comma list of folders to bucket by |
+
+### Coverage (optional)
+
+With `COVERAGE=1`, each worker records coverage under its own `TEST_ENV_NUMBER`
+and rspec-turbo merges the results into a single report when the run ends, via
+the bundled `coverage:merge` task — **JSON on CI**
+(`SimpleCov::Formatter::JSONFormatter`), **HTML locally**
+(`SimpleCov::Formatter::HTMLFormatter`).
+
+1. Add the formatters to your Gemfile:
+
+   ```ruby
+   group :test do
+     gem "simplecov", require: false
+     gem "simplecov_json_formatter", require: false
+   end
+   ```
+
+2. Have each worker write its **own** result file (so parallel workers don't
+   clobber each other), keyed by `TEST_ENV_NUMBER` — at the very top of
+   `spec/spec_helper.rb`, before your app is required:
+
+   ```ruby
+   if ENV["COVERAGE"] == "1"
+     require "simplecov"
+     SimpleCov.command_name "worker_#{ENV["TEST_ENV_NUMBER"]}"
+     SimpleCov.coverage_dir "coverage/#{ENV["TEST_ENV_NUMBER"]}"
+     SimpleCov.start "rails"
+   end
+   ```
+
+3. Run it:
+
+   ```sh
+   COVERAGE=1 bundle exec rspec-turbo
+   ```
+
+The merge collates `coverage/**/.resultset.json` (override with
+`RSPEC_TURBO_COVERAGE_GLOB`) and writes the combined report to `coverage/`. You
+can also run it on its own: `bundle exec rake coverage:merge`.
 
 ## Architecture
 

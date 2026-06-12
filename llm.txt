@@ -1,0 +1,90 @@
+# rspec-turbo
+
+> A zero-config parallel RSpec runner for Ruby. Spreads an RSpec suite across N
+> worker processes and balances the load by the **actual number of examples**
+> (counted from a single `rspec --dry-run`, via an LPT bin-packing heuristic),
+> even splitting a single oversized spec file across workers by example ID.
+> RSpec-only by design — focused and lean where `parallel_tests` is general.
+
+Ruby `>= 3.0` · runtime dependency: `rspec-core` · License: MIT ·
+Repo: https://github.com/thadeu/rspec-turbo · Gem: https://rubygems.org/gems/rspec-turbo
+
+## Install
+
+```ruby
+# Gemfile — needs :development so the rake/rails tasks load (they run in dev env)
+group :development, :test do
+  gem "rspec-turbo"
+end
+```
+
+## Run
+
+```sh
+bundle exec rspec-turbo                              # all of spec/
+bundle exec rspec-turbo spec/models lib              # specific folders
+bundle exec rspec-turbo spec/models/project_spec.rb  # a single file
+bundle exec rspec-turbo --exclude-pattern "spec/requests/**/*"
+bundle exec rspec-turbo --fail-fast spec/models
+bundle exec rails spec:turbo                         # same, via Rails CLI (whole suite)
+bundle exec rake spec:turbo                          # same, via Rake (whole suite)
+```
+
+Any RSpec flag (`--tag`, `--seed`, `--order`, …) is forwarded to every worker.
+
+## How it works
+
+Pipeline: `parse argv → DbSetup → FileDiscovery → BatchPlanner → Executor (pool) → Report`
+
+1. **DbSetup** — one `rails db:drop db:create db:schema:load db:seed` per worker
+   slot (each with its own `TEST_ENV_NUMBER`); cached by a fingerprint of
+   `db/schema.rb` + `db/seeds.rb` + worker count.
+2. **FileDiscovery** — globs `*_spec.rb`, applies `--exclude-pattern`.
+3. **BatchPlanner** — one `rspec --dry-run --format json` counts examples per
+   file, then LPT bin-packs into balanced batches; oversized files are sliced by
+   example ID so no single file bottlenecks a worker.
+4. **Executor** — fixed slot pool recycled until the queue drains; live TTY
+   dashboard or periodic CI progress lines.
+5. **Report** — failures per worker, slowest folders/files, and a one-line
+   summary (wall time, summed CPU time, speedup).
+
+## Parallel test databases (required)
+
+Each worker gets its own `TEST_ENV_NUMBER`, so each needs its own database. Key
+the test DB name by it in `config/database.yml`:
+
+```yaml
+test:
+  <<: *default
+  database: myapp_test<%= ENV["TEST_ENV_NUMBER"] %>
+```
+
+## Environment variables
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `RSPEC_TURBO_MAX` | nproc | Number of parallel workers |
+| `RSPEC_TURBO_LOG_DIR` | `tmp/rspec-turbo` | Per-worker log directory |
+| `RSPEC_TURBO_FORCE_SETUP` | off | `1` recreates the test DBs even if cached |
+| `RSPEC_TURBO_PROGRESS_INTERVAL` | `30` | Seconds between CI progress lines |
+| `RSPEC_TURBO_NO_PROFILE` | off | `1` disables the slow-test profiler |
+| `RSPEC_PROFILE_THRESHOLD_TIME` | `0.2` | Seconds before an example is "slow" |
+| `RSPEC_PROFILE_THRESHOLD_QUERIES` | `30` | Query count before an example is "slow" |
+| `RSPEC_PROFILE_GROUP_BY` | — | Folder bucketing for the slow report |
+| `COVERAGE` | `0` | `1` merges SimpleCov results after the run |
+| `JUNIT_DIR` | — | Emit one JUnit XML per worker into this dir |
+| `CI` | — | Forces plain (non-TTY) progress mode |
+
+## Source layout
+
+- `exe/rspec-turbo` — CLI entry point
+- `lib/rspec_turbo/` — `config`, `terminal`, `options`, `db_setup`,
+  `file_discovery`, `batch_planner`, `display`, `worker`, `executor`, `runner`,
+  `progress_reporter`, `slow_profile`, `railtie`, `tasks.rake`, `version`
+- `spec/rspec_turbo/` — RSpec specs
+- Style: Standard Ruby (`bundle exec standardrb`); test: `bundle exec rake`
+
+## Docs
+
+- README: https://github.com/thadeu/rspec-turbo/blob/main/README.md
+- Changelog: https://github.com/thadeu/rspec-turbo/blob/main/CHANGELOG.md

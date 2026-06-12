@@ -12,7 +12,11 @@ module RSpecTurbo
   # be required by absolute path inside the spawned `rspec` process. The slowest
   # files report is produced separately by slow_profile.rb.
   class ProgressReporter < RSpec::Core::Formatters::BaseFormatter
-    RSpec::Core::Formatters.register self, :example_finished
+    # Register the three terminal notifications (exactly one fires per example)
+    # instead of :example_finished, which older rspec-core versions don't
+    # dispatch to formatters — that left the counter stuck at zero on some
+    # projects. This mirrors the built-in progress formatter.
+    RSpec::Core::Formatters.register self, :example_passed, :example_failed, :example_pending
 
     def initialize(output)
       super
@@ -20,7 +24,21 @@ module RSpecTurbo
       @progress_file = ENV["RSPEC_TURBO_PROGRESS_FILE"]
     end
 
-    def example_finished(_notification)
+    def example_passed(_notification)
+      record
+    end
+
+    def example_failed(_notification)
+      record
+    end
+
+    def example_pending(_notification)
+      record
+    end
+
+    private
+
+    def record
       @count += 1
       return unless @progress_file
 

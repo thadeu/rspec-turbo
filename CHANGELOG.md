@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2] - 2026-06-12
+
+### Fixed
+- `DbSetup` sets `DISABLE_DATABASE_ENVIRONMENT_CHECK=1`, so `db:drop` no longer
+  fails with `ActiveRecord::NoEnvironmentInSchemaError` on databases missing
+  environment metadata (the production guard is irrelevant for the test DBs).
+
 ## [0.1.1] - 2026-06-12
 
 ### Added

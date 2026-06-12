@@ -1,11 +1,98 @@
-# rspec-turbo
+# ⚡ rspec-turbo
 
-Parallel RSpec runner — like `parallel_tests`, but it balances work by the
-**actual number of examples** (counted in a single `--dry-run`) instead of by
-file or static timings, and it can split a single oversized spec file across
-workers. Ships a live terminal dashboard, a CI-friendly progress mode,
-schema-fingerprinted test-DB setup caching, JUnit output, coverage merging, and
-a slowest-folders/files report.
+[![Gem Version](https://img.shields.io/gem/v/rspec-turbo)](https://rubygems.org/gems/rspec-turbo)
+[![Ruby](https://img.shields.io/badge/ruby-%3E%3D%203.0-CC342D)](https://www.ruby-lang.org)
+[![Style](https://img.shields.io/badge/code_style-standard-brightgreen)](https://github.com/standardrb/standard)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE.txt)
+
+**Run your whole RSpec suite in parallel — with zero config.**
+
+`rspec-turbo` spreads your specs across every core, balancing the load by the
+**actual number of examples** (not file size, not a stale timing log) and even
+splitting a single oversized file across workers. One command, a live progress
+dashboard, and a report that tells you exactly which folders are slowing you
+down.
+
+```sh
+bundle add rspec-turbo --group test
+bundle exec rspec-turbo
+```
+
+That's it. No runtime logs to maintain, no grouping flags to tune.
+
+---
+
+## 🏎️ See it run
+
+```text
+====================================================================
+  RSpec Turbo - Parallel
+====================================================================
+
+  ✓ 8 DB(s) ready (0s)
+  ✓ 4210 examples · 312 files · 8 batches (~526 each) (3s)
+
+  ✓ worker/01  1m02s  PASS   requests/v1
+  ✓ worker/02  58s    PASS   models · services
+  ⠹ worker/03  ~520 ex  46s   jobs · mailers
+  ...
+
+  ▓▓▓▓▓▓▓▓▓▓▓▓▓░░░░░░░  2731/4210  65%
+
+====================================================================
+  RSpec Turbo Report
+====================================================================
+
+  Slowest folders  ↳ optimize these first
+
+  requests/v1                                     1m12s  ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
+  models                                            48s  ▓▓▓▓▓▓▓▓▓▓▓▓▓░░░░░░░
+  services                                          31s  ▓▓▓▓▓▓▓▓░░░░░░░░░░░░░
+
+  ✓ All passed  ·  4210 examples  ·  8 workers  ·  wall 1m04s  sum 7m58s  7.4x
+```
+
+*(Illustrative output — your speedup scales with your cores.)*
+
+---
+
+## Why not just use `parallel_tests`?
+
+[`parallel_tests`](https://github.com/grosser/parallel_tests) is a great,
+battle-tested tool — and if you run Minitest, Cucumber, Test::Unit **and**
+RSpec, its multi-framework reach is exactly what you want.
+
+But if your project is **RSpec-only**, that generality costs you. `rspec-turbo`
+does one thing and tunes hard for it:
+
+| | `parallel_tests` | **`rspec-turbo`** |
+|---|---|---|
+| **Scope** | Multi-framework (RSpec, Minitest, Cucumber…) | RSpec only — focused and lean |
+| **Default balancing** | By file **size** (bytes) — a rough proxy for time | By **actual example count** from one `rspec --dry-run` |
+| **Best-case balancing** | `--group-by runtime`, needs a runtime log you record and keep fresh | Recomputed every run from the dry-run — **always current, nothing to maintain** |
+| **Unit of work** | A whole file — one giant `*_spec.rb` stalls a process | A file **or** example-ID slices — **splits big files across workers** |
+| **Config to balance well** | Generate + commit `tmp/parallel_runtime_rspec.log` | **None** — good distribution out of the box |
+| **Live output** | Per-process stdout, interleaved | Live TTY dashboard (spinner per worker + global bar) / clean CI progress |
+| **Final report** | Concatenated process outputs | **One consolidated report**: failures per worker, speedup, slowest folders/files |
+| **Slow-test insight** | DIY (`--profile` per process, aggregate yourself) | **Built in, on by default** — per-file time + SQL query counts, aggregated |
+| **Test-DB setup** | `rake parallel:prepare` (you decide when to re-run) | Automatic, **schema-fingerprint cached** — skipped when the schema hasn't changed |
+| **JUnit / coverage merge** | Extra wiring | Built in (`JUNIT_DIR`, `COVERAGE=1`) |
+
+### What that means in practice
+
+- **Better balance, no homework.** `parallel_tests`' file-size grouping puts a
+  500-line file with 3 slow examples in the same weight class as a 500-line file
+  with 80 fast ones. `rspec-turbo` counts the *examples* (via a fast dry-run) and
+  packs them with a longest-processing-time-first heuristic — and it does this
+  every run, so it never goes stale and there's no runtime log to commit.
+- **No single-file bottleneck.** When one mega `*_spec.rb` holds 20% of your
+  suite, a file-based splitter leaves one process grinding while the rest idle.
+  `rspec-turbo` slices that file by example ID across workers.
+- **Answers, not just speed.** Every run ends with a ranked "slowest folders /
+  files" report (and SQL query counts under Rails), so you know *what* to
+  optimize next — not just that the suite is slow.
+
+---
 
 ## Install
 
@@ -114,7 +201,7 @@ lib/rspec_turbo/
 ├── executor.rb          # the slot pool + TTY/CI run loops
 ├── runner.rb            # top-level orchestration
 ├── progress_reporter.rb # formatter injected into workers (progress bar)
-└── slow_profile.rb      # opt-in profiler injected into workers (slow report)
+└── slow_profile.rb      # profiler injected into workers (slow report)
 ```
 
 ## Development
@@ -132,6 +219,14 @@ The `.rubocop.yml` simply loads Standard's ruleset so editors and tooling that
 speak RuboCop pick up the same rules; the canonical runner is `standardrb`.
 VS Code is pre-wired (`.vscode/settings.json`) to format on save with Standard
 via the Ruby LSP extension.
+
+## Contributing
+
+Issues and pull requests are welcome. Run `bundle exec rake` before opening a
+PR — it must be green (specs + Standard).
+
+**If `rspec-turbo` shaves minutes off your CI, drop a ⭐ on the repo** — it helps
+other RSpec teams find it.
 
 ## License
 

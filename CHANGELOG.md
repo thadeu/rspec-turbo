@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.3] - 2026-06-12
+
+### Fixed
+- Live progress counter stuck at zero on some projects: the per-worker reporter
+  now registers the three terminal notifications (`:example_passed`,
+  `:example_failed`, `:example_pending`) instead of `:example_finished`, which
+  older rspec-core versions don't dispatch to formatters. Mirrors the built-in
+  progress formatter, so it counts everywhere.
+
 ## [0.1.2] - 2026-06-12
 
 ### Fixed

@@ -39,7 +39,14 @@ module RSpecTurbo
       (1..@n).map do |slot|
         log = Config.setup_log_path(slot)
         pid = Process.spawn(
-          {"TEST_ENV_NUMBER" => slot.to_s, "RAILS_ENV" => "test"},
+          {
+            "TEST_ENV_NUMBER" => slot.to_s,
+            "RAILS_ENV" => "test",
+            # db:drop runs db:check_protected_environments, which raises
+            # NoEnvironmentInSchemaError when a DB has no environment metadata.
+            # We always operate on the test DBs, so skip that production guard.
+            "DISABLE_DATABASE_ENVIRONMENT_CHECK" => "1"
+          },
           *SETUP_COMMAND,
           out: log, err: [:child, :out]
         )

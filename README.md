@@ -124,6 +124,19 @@ RSPEC_TURBO_FORCE_SETUP=1 bundle exec rspec-turbo    # recreate test DBs
 Any RSpec flag you pass through (`--tag`, `--seed`, `--order`, …) is forwarded
 to every worker.
 
+### Three ways to launch it
+
+```sh
+bundle exec rspec-turbo       # the binary — full control (paths, flags)
+bundle exec rails spec:turbo  # the same task, via the Rails CLI
+bundle exec rake spec:turbo   # Rake task — runs the whole suite
+```
+
+In a Rails app the `spec:turbo` task is registered automatically (via a
+Railtie), and `rails spec:turbo` works because Rails routes unknown commands to
+Rake. The `rake`/`rails` forms run the **entire** suite — ideal for CI; for
+specific folders or RSpec flags, reach for the `rspec-turbo` binary.
+
 ## How it works
 
 ```
@@ -201,7 +214,9 @@ lib/rspec_turbo/
 ├── executor.rb          # the slot pool + TTY/CI run loops
 ├── runner.rb            # top-level orchestration
 ├── progress_reporter.rb # formatter injected into workers (progress bar)
-└── slow_profile.rb      # profiler injected into workers (slow report)
+├── slow_profile.rb      # profiler injected into workers (slow report)
+├── railtie.rb           # registers the spec:turbo task in Rails apps
+└── tasks.rake           # the rake spec:turbo / rails spec:turbo task
 ```
 
 ## Development

@@ -13,6 +13,9 @@ Initial extraction from the single-file `turbo.rb` runner into a gem.
   enabled by default (disable with `RSPEC_TURBO_NO_PROFILE=1`) and safe outside
   Rails (times examples without counting SQL when ActiveSupport is absent).
 - JUnit XML output (`JUNIT_DIR`) and SimpleCov coverage merging (`COVERAGE=1`).
+- Three entry points: the `rspec-turbo` binary plus a `spec:turbo` Rake task
+  (reachable as both `rake spec:turbo` and `rails spec:turbo`), registered in
+  Rails apps through a Railtie.
 
 ### Fixed (versus the original script)
 - `DbSetup#show_log` referenced an undefined `w` variable on failure.

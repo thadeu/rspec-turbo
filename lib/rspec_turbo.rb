@@ -19,3 +19,7 @@ require_relative "rspec_turbo/runner"
 # the orchestrator, so the parent never has to load rspec-core or ActiveSupport.
 module RSpecTurbo
 end
+
+# In a Rails app, register the `spec:turbo` Rake task (also reachable as
+# `rails spec:turbo`). Skipped entirely when Rails isn't loaded.
+require_relative "rspec_turbo/railtie" if defined?(Rails::Railtie)

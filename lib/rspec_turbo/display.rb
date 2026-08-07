@@ -14,7 +14,7 @@ module RSpecTurbo
       counts = Hash.new(0)
       batch_units.each { |unit| counts[folder_for(unit)] += 1 }
       label = counts.map { |folder, n| with_counts ? "#{folder}(#{n})" : folder }.join(" · ")
-
+      label = Terminal.sanitize(label)
       return label unless max_len
 
       label.slice(0, max_len).then { |slice| (slice.length < label.length) ? "#{slice}…" : slice }
@@ -225,7 +225,7 @@ module RSpecTurbo
     def clean_log(path)
       return nil unless File.exist?(path)
 
-      Terminal.strip_ansi(File.binread(path).force_encoding("UTF-8").scrub)
+      Terminal.sanitize(File.binread(path).force_encoding("UTF-8").scrub)
     end
   end
 end

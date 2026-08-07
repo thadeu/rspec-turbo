@@ -13,7 +13,7 @@ module RSpecTurbo
     end
 
     def run
-      FileUtils.mkdir_p(Config.log_dir)
+      FileUtils.mkdir_p(Config.log_dir, mode: 0o700)
       print_header
 
       setup_databases

@@ -5,6 +5,11 @@ module RSpecTurbo
   # (TTY), the plain CI worker roster, and the final report — failures plus
   # the slowest folders/files (fed by slow_profile.rb in each worker log).
   class Display
+    # Cap worker-log reads so a runaway spec cannot OOM the reporter. Keep
+    # the tail: failure summaries and the slow-profile section are emitted
+    # near the end of an RSpec run.
+    MAX_LOG_BYTES = 2 * 1024 * 1024
+
     def initialize(planner)
       @planner = planner
     end
@@ -14,7 +19,7 @@ module RSpecTurbo
       counts = Hash.new(0)
       batch_units.each { |unit| counts[folder_for(unit)] += 1 }
       label = counts.map { |folder, n| with_counts ? "#{folder}(#{n})" : folder }.join(" · ")
-
+      label = Terminal.sanitize(label)
       return label unless max_len
 
       label.slice(0, max_len).then { |slice| (slice.length < label.length) ? "#{slice}…" : slice }
@@ -221,11 +226,24 @@ module RSpecTurbo
       sums.sort_by { |_, seconds| -seconds }
     end
 
-    # Read a worker log, scrub invalid bytes and strip ANSI colour codes.
-    def clean_log(path)
-      return nil unless File.exist?(path)
+    # Refuse to follow symlinks when the platform exposes O_NOFOLLOW, so a
+    # TOCTOU swap of the log path cannot redirect the read at secrets.
+    def nofollow_flag = File.const_defined?(:NOFOLLOW) ? File::NOFOLLOW : 0
 
-      Terminal.strip_ansi(File.binread(path).force_encoding("UTF-8").scrub)
+    # Read a worker log, scrub invalid bytes and strip unsafe control chars.
+    # Opens with NOFOLLOW and rescues SystemCallError so a missing path, a
+    # permission error, or a symlink loop all collapse to nil rather than a
+    # TOCTOU race against File.exist?.
+    def clean_log(path)
+      raw = File.open(path, File::RDONLY | nofollow_flag) do |f|
+        f.binmode
+        size = f.size
+        f.seek([size - MAX_LOG_BYTES, 0].max) if size > MAX_LOG_BYTES
+        f.read
+      end
+      Terminal.sanitize(raw.force_encoding("UTF-8").scrub)
+    rescue SystemCallError
+      nil
     end
   end
 end

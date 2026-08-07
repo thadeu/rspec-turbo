@@ -7,6 +7,17 @@ RSpec.describe RSpecTurbo::Display do
   let(:planner) { instance_double(RSpecTurbo::BatchPlanner, pending_count: 0) }
   let(:display) { described_class.new(planner) }
 
+  describe ".folder_labels" do
+    it "strips escape sequences embedded in a spec path" do
+      # Escape sits in the folder segment folder_for keeps, not the filename
+      # it discards — otherwise sanitize would never see the payload.
+      label = described_class.folder_labels(["\e]52;c;aGVsbG8=\amodels/user_spec.rb"])
+
+      expect(label).not_to include("\e")
+      expect(label).to eq("models")
+    end
+  end
+
   describe ".folder_for" do
     it "buckets a top-level spec file by its first segment" do
       expect(described_class.folder_for("models/user_spec.rb")).to eq("models")
@@ -78,6 +89,27 @@ RSpec.describe RSpecTurbo::Display do
         ["requests", 20.0],
         ["models", 15.0]
       ])
+    end
+  end
+
+  describe "#clean_log" do
+    it "reads only the tail of a file larger than MAX_LOG_BYTES" do
+      Dir.mktmpdir do |dir|
+        path = File.join(dir, "worker_01.log")
+        # Head marker sits past the cap and must be discarded; the tail marker
+        # is retained so extract_failures/parse_profiler_data still work.
+        File.binwrite(path, "HEAD_MARKER#{"X" * described_class::MAX_LOG_BYTES}TAIL_MARKER\n")
+
+        content = display.send(:clean_log, path)
+
+        expect(content).to include("TAIL_MARKER")
+        expect(content).not_to include("HEAD_MARKER")
+        expect(content.bytesize).to be <= described_class::MAX_LOG_BYTES
+      end
+    end
+
+    it "returns nil for a missing path" do
+      expect(display.send(:clean_log, "/nonexistent/rspec-turbo-missing.log")).to be_nil
     end
   end
 end

@@ -21,4 +21,41 @@ RSpec.describe RSpecTurbo::Terminal do
       expect(described_class.strip_ansi("plain")).to eq("plain")
     end
   end
+
+  describe ".sanitize" do
+    it "drops an OSC 52 clipboard write" do
+      expect(described_class.sanitize("\e]52;c;aGVsbG8=\a")).to eq("")
+    end
+
+    it "drops an OSC sequence terminated by ST" do
+      expect(described_class.sanitize("\e]0;title\e\\")).to eq("")
+    end
+
+    it "strips non-m CSI final bytes whole" do
+      expect(described_class.sanitize("\e[2Jcleared")).to eq("cleared")
+    end
+
+    it "removes carriage-return overwrite controls" do
+      expect(described_class.sanitize("visible\rHIDDEN")).to eq("visibleHIDDEN")
+    end
+
+    it "drops 8-bit C1 introducers" do
+      expect(described_class.sanitize("\u009Bhi")).to eq("hi")
+    end
+
+    it "removes bidi override characters" do
+      expect(described_class.sanitize("safe\u202Eemas")).to eq("safeemas")
+    end
+
+    it "preserves newlines and tabs" do
+      expect(described_class.sanitize("a\tb\nc")).to eq("a\tb\nc")
+    end
+
+    it "still drops ESC from an unterminated OSC" do
+      result = described_class.sanitize("\e]52;c;partial")
+
+      expect(result).not_to include("\e")
+      expect(result).to eq("]52;c;partial")
+    end
+  end
 end

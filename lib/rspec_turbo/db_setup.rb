@@ -22,7 +22,7 @@ module RSpecTurbo
     def run!
       return true if !@force && cached?
 
-      FileUtils.mkdir_p(Config.log_dir)
+      FileUtils.mkdir_p(Config.log_dir, mode: 0o700)
       failed = wait_all(spawn_all)
 
       return write_marker && true if failed.empty?

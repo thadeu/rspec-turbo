@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "fileutils"
 require "json"
 
 module RSpecTurbo
@@ -41,13 +42,10 @@ module RSpecTurbo
       return empty_result if @files.empty?
 
       t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-      raw = capture_dry_run
+      capture_dry_run
       @dry_run_elapsed = (Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0).round
 
-      json_start = raw.index("{")
-      raise "No JSON in dry-run output" unless json_start
-
-      parse_examples(JSON.parse(raw[json_start..]))
+      parse_examples(read_dry_run_json)
     rescue => e
       warn "  ⚠ dry-run failed (#{e.message}) — using equal-weight distribution"
       log_dry_run_error
@@ -55,16 +53,28 @@ module RSpecTurbo
       empty_result
     end
 
+    # The JSON goes to its own file (`--out`), never stdout: apps that start
+    # SimpleCov unconditionally print their coverage summary to stdout right
+    # after the formatter, which would make the JSON unparseable.
     def capture_dry_run
+      FileUtils.mkdir_p(Config.log_dir)
+      FileUtils.rm_f(Config.dry_run_json)
+
       File.open(Config.dry_run_log, "w") do |err_file|
         IO.popen(
-          # COVERAGE=0 keeps SimpleCov from contaminating the JSON on stdout.
           [{"RAILS_ENV" => "test", "COVERAGE" => "0", "TEST_ENV_NUMBER" => "1"},
-            "bundle", "exec", "rspec", "--dry-run", "--format", "json",
+            "bundle", "exec", "rspec", "--dry-run", "--format", "json", "--out", Config.dry_run_json,
             *@rspec_options, *@files.map { |f| "spec/#{f}" }],
           err: err_file, &:read
         )
       end
+    end
+
+    def read_dry_run_json
+      raw = File.exist?(Config.dry_run_json) ? File.read(Config.dry_run_json) : ""
+      raise "No JSON in dry-run output" if raw.strip.empty?
+
+      JSON.parse(raw)
     end
 
     def parse_examples(parsed)

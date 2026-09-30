@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "tmpdir"
+
 RSpec.describe RSpecTurbo::BatchPlanner do
   # The dry-run shells out to rspec, so the example-balancing logic is tested
   # directly by injecting known counts and calling the (private) packers.
@@ -63,6 +65,54 @@ RSpec.describe RSpecTurbo::BatchPlanner do
 
       expect(planner.example_count(["a"])).to eq(7)
       expect(planner.example_count([%w[id1 id2 id3]])).to eq(3)
+    end
+  end
+
+  describe "dry-run" do
+    around do |example|
+      Dir.mktmpdir do |dir|
+        previous = ENV["RSPEC_TURBO_LOG_DIR"]
+        ENV["RSPEC_TURBO_LOG_DIR"] = dir
+        example.run
+      ensure
+        ENV["RSPEC_TURBO_LOG_DIR"] = previous
+      end
+    end
+
+    let(:json) do
+      {
+        examples: [
+          {file_path: "./spec/a_spec.rb", id: "./spec/a_spec.rb[1:1]"},
+          {file_path: "./spec/a_spec.rb", id: "./spec/a_spec.rb[1:2]"},
+          {file_path: "./spec/b_spec.rb", id: "./spec/b_spec.rb[1:1]"}
+        ],
+        summary: {pending_count: 1}
+      }.to_json
+    end
+
+    it "reads the JSON from --out, whatever else lands on stdout" do
+      allow(IO).to receive(:popen) do |cmd, **|
+        File.write(cmd[cmd.index("--out") + 1], json)
+
+        "#{json}Coverage report generated for RSpec to coverage.\nLine Coverage: 100.0%\n"
+      end
+
+      planner = described_class.new(%w[a_spec.rb b_spec.rb], num_workers: 2).plan!
+
+      expect(planner.counts).to eq("a_spec.rb" => 2, "b_spec.rb" => 1)
+      expect(planner.pending_count).to eq(1)
+    end
+
+    it "falls back to equal weights when rspec writes no JSON" do
+      allow(IO).to receive(:popen).and_return("")
+
+      planner = nil
+
+      expect { planner = described_class.new(%w[a_spec.rb], num_workers: 2).plan! }
+        .to output(/No JSON in dry-run output/).to_stderr
+
+      expect(planner.counts).to eq({})
+      expect(planner.batches).to eq([["a_spec.rb"]])
     end
   end
 end

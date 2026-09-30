@@ -58,6 +58,8 @@ module RSpecTurbo
 
     def dry_run_log = File.join(log_dir, "dry_run_stderr.log")
 
+    def dry_run_json = File.join(log_dir, "dry_run.json")
+
     def coverage_merge_log = File.join(log_dir, "coverage_merge.log")
   end
 end

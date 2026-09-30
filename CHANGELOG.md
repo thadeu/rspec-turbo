@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.5] - 2026-09-29
+
+### Fixed
+- Examples defined in `shared_examples` are now counted for the spec file that
+  includes them. The dry-run keyed examples by `file_path`, which RSpec sets to
+  the shared file, so those examples were missing from the file weights and
+  from the report total. The file now comes from the example id.
+
 ## [0.1.4] - 2026-09-29
 
 ### Fixed

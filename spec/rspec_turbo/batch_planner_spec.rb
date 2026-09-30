@@ -103,6 +103,26 @@ RSpec.describe RSpecTurbo::BatchPlanner do
       expect(planner.pending_count).to eq(1)
     end
 
+    it "counts shared examples for the spec file that includes them" do
+      shared = {
+        examples: [
+          {file_path: "./spec/support/shared_examples/adapter.rb", id: "./spec/a_spec.rb[1:1:1]"},
+          {file_path: "./spec/a_spec.rb", id: "./spec/a_spec.rb[1:2]"}
+        ],
+        summary: {pending_count: 0}
+      }.to_json
+
+      allow(IO).to receive(:popen) do |cmd, **|
+        File.write(cmd[cmd.index("--out") + 1], shared)
+
+        ""
+      end
+
+      planner = described_class.new(%w[a_spec.rb], num_workers: 1).plan!
+
+      expect(planner.counts).to eq("a_spec.rb" => 2)
+    end
+
     it "falls back to equal weights when rspec writes no JSON" do
       allow(IO).to receive(:popen).and_return("")
 

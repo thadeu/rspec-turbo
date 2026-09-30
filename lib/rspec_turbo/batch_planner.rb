@@ -81,8 +81,10 @@ module RSpecTurbo
       counts = Hash.new(0)
       ids = Hash.new { |hash, key| hash[key] = [] }
 
+      # Key by the file in the example id, not `file_path`: examples from
+      # shared_examples report the shared file as their `file_path`.
       parsed["examples"].each do |example|
-        file = example["file_path"].delete_prefix("./spec/")
+        file = example["id"].sub(/\[[\d:]+\]\z/, "").delete_prefix("./spec/")
         counts[file] += 1
         ids[file] << example["id"]
       end

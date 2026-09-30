@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.4] - 2026-09-29
+
+### Fixed
+- Dry-run no longer falls back to equal-weight distribution when the app prints
+  to stdout during the run (e.g. SimpleCov's "Coverage report generated…"
+  summary, emitted even with `COVERAGE=0` by apps that start it
+  unconditionally). The JSON formatter now writes to its own file
+  (`--out tmp/rspec-turbo/dry_run.json`), so stdout noise can't corrupt it.
+
 ## [0.1.3] - 2026-06-12
 
 ### Fixed
